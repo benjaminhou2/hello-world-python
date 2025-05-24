@@ -3,11 +3,11 @@ import sys
 from snake_core import Game, TwoPlayerGame # Import TwoPlayerGame
 
 # --- Constants ---
-SCREEN_WIDTH = 600
-SCREEN_HEIGHT = 400
-GRID_SIZE = 20  # Size of each grid cell
-GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
-GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
+SCREEN_WIDTH = 800  # Increased from 600
+SCREEN_HEIGHT = 600 # Increased from 400
+GRID_SIZE = 20  # Size of each grid cell (kept same)
+GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE   # Now 40
+GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE # Now 30
 
 # Colors
 BLACK = (0, 0, 0)
@@ -25,15 +25,15 @@ POWERUP_PYGAME_COLORS = {
     'PURPLE': (128, 0, 128),
 }
 
-FPS = 10  # Frames per second, controls game speed
+FPS = 7  # Frames per second, controls game speed (decreased from 10)
 
 # --- Pygame Initialization ---
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Snake Game")
 clock = pygame.time.Clock()
-font = pygame.font.SysFont(None, 35)
-game_over_font = pygame.font.SysFont(None, 75)
+font = pygame.font.SysFont(None, 48) # Increased font size
+game_over_font = pygame.font.SysFont(None, 100) # Increased game over font size
 
 # --- Helper Functions ---
 def draw_grid():
@@ -46,12 +46,24 @@ def draw_snake(snake_body, color=GREEN): # Added color parameter
     for segment in snake_body:
         pygame.draw.rect(screen, color, (segment[0] * GRID_SIZE, segment[1] * GRID_SIZE, GRID_SIZE, GRID_SIZE))
 
-def draw_food(food_position):
-    pygame.draw.rect(screen, RED, (food_position[0] * GRID_SIZE, food_position[1] * GRID_SIZE, GRID_SIZE, GRID_SIZE))
+def draw_foods(foods_list): # MODIFIED: Renamed and takes a list
+    for food_position in foods_list: # MODIFIED: Loop through the list
+        pygame.draw.rect(screen, RED, (food_position[0] * GRID_SIZE, food_position[1] * GRID_SIZE, GRID_SIZE, GRID_SIZE))
 
-def display_score_single(score):
-    score_text = font.render(f"Score: {score}", True, BLACK)
-    screen.blit(score_text, (10, 10))
+def display_score_single(game_obj): # Modified signature to take game object
+    score = game_obj.get_score()
+    score_text_str = f"Score: {score}"
+
+    snake = game_obj.snake # Access the snake instance
+    if snake.active_powerup_type and snake.powerup_effect_timer > 0:
+        powerup_def = game_obj.POWERUP_DEFINITIONS.get(snake.active_powerup_type)
+        if powerup_def:
+            symbol = powerup_def['symbol']
+            timer_secs = round(snake.powerup_effect_timer / FPS)
+            score_text_str += f" [{symbol}: {timer_secs}s]"
+
+    score_text_render = font.render(score_text_str, True, BLACK)
+    screen.blit(score_text_render, (10, 10))
 
 def draw_obstacles(obstacle_coords):
     for x, y in obstacle_coords:
@@ -274,8 +286,14 @@ def single_player_game_loop():
         screen.fill(WHITE)
         draw_grid()
         draw_snake(game.get_snake_body()) # Default color (GREEN)
-        draw_food(game.get_food_position())
-        display_score_single(game.get_score())
+        draw_foods(game.get_foods()) # MODIFIED: Call draw_foods with game.get_foods()
+        
+        # Display powerup if active on map (for single player)
+        powerup_details_sp = game.get_powerup_item_details()
+        if powerup_details_sp:
+            draw_powerup_item(powerup_details_sp)
+            
+        display_score_single(game) # Pass the whole game object
 
         if game.is_game_over():
             action = display_game_over_single(game.get_score())
@@ -329,7 +347,7 @@ def two_player_game_loop(selected_map_id, game_mode_details): # Added game_mode_
         draw_obstacles(game.get_obstacles()) # Draw obstacles first
         draw_snake(game.get_snake1_body(), game.get_snake1_color()) # P1
         draw_snake(game.get_snake2_body(), game.get_snake2_color()) # P2
-        draw_food(game.get_food_position())
+        draw_foods(game.get_foods()) # MODIFIED: Call draw_foods with game.get_foods()
         
         powerup_details = game.get_powerup_item_details()
         if powerup_details:
